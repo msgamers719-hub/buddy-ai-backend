@@ -1,40 +1,46 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from openai import OpenAI
 import os
+import requests
 
 app = Flask(__name__)
 CORS(app)
 
-client = OpenAI(api_key=os.getenv("OPENAI_KEY"))
+OPENAI_KEY = os.environ.get("OPENAI_KEY")
 
-@app.route("/", methods=["GET"])
+@app.route("/")
 def home():
-    return "BuDDy AI backend is running 🚀"
+    return "BuDDy backend running"
 
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
-    user_message = data.get("message", "")
+    user_msg = data.get("message", "")
 
-    if not user_message:
-        return jsonify({"error": "Message is required"}), 400
+    if not user_msg:
+        return jsonify({"reply": "Say something 😊"})
 
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are BuDDy, a friendly AI assistant."},
-                {"role": "user", "content": user_message}
-            ]
-        )
+    headers = {
+        "Authorization": f"Bearer {OPENAI_KEY}",
+        "Content-Type": "application/json"
+    }
 
-        return jsonify({
-            "reply": response.choices[0].message.content
-        })
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": "You are BuDDy, a friendly AI assistant."},
+            {"role": "user", "content": user_msg}
+        ]
+    }
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    res = requests.post(
+        "https://api.openai.com/v1/chat/completions",
+        headers=headers,
+        json=payload
+    )
+
+    reply = res.json()["choices"][0]["message"]["content"]
+    return jsonify({"reply": reply})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run()
